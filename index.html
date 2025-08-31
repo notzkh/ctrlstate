@@ -4,201 +4,596 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>CtrlState — Reflexive Influence Simulator</title>
+
+  <!-- Retro 8-bit font -->
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+
   <style>
-    :root{--bg:#0b0b0f;--panel:#12121a;--panel2:#1b1b26;--line:#2b2b3b;
-      --text:#e8e8f2;--muted:#a7a7c0;--accent:#39ff14;
-      --accent2:#00c2ff;--warn:#ff3d81;--yellow:#ffd400}
-    body{margin:0;background:var(--bg);color:var(--text);
-      font-family:'Press Start 2P',monospace;image-rendering:pixelated}
-    .wrap{max-width:1100px;margin:0 auto;padding:20px}
-    .btn{cursor:pointer;background:var(--accent);color:#091109;
-      border:4px solid #000;outline:2px solid var(--line);
-      padding:12px 14px;text-align:center;box-shadow:0 6px 0 #000;
-      font-size:12px}
-    .btn.alt{background:var(--accent2);color:#001018}
-    .btn.warn{background:var(--warn);color:#21000d}
-    .start{display:flex;align-items:center;justify-content:center;
-      min-height:100dvh;text-align:center;
-      background:radial-gradient(ellipse at center,#0f0f17 0%,#08080c 70%);}
-    .title{font-size:24px;color:#fff;margin-bottom:16px;text-shadow:0 3px 0 #000,0 0 12px var(--accent2)}
-    .subtitle{font-size:10px;color:var(--muted);margin-bottom:18px}
-    .screen{display:none}.screen.active{display:block}
-    .panel{background:var(--panel);border:4px solid #000;outline:2px solid var(--line);
-      padding:16px;box-shadow:0 0 0 4px var(--panel2),0 12px 0 #000}
-    .row{display:grid;gap:16px}.cols-2{grid-template-columns:1fr 1fr}
+    :root{
+      --bg:#0b0b0f;
+      --panel:#12121a;
+      --panel2:#1b1b26;
+      --line:#2b2b3b;
+      --text:#e8e8f2;
+      --muted:#a7a7c0;
+      --accent:#39ff14;    /* neon green */
+      --accent2:#00c2ff;   /* cyan */
+      --warn:#ff3d81;      /* magenta/pink */
+      --yellow:#ffd400;
+    }
+
+    *{box-sizing:border-box}
+    body{
+      margin:0; background:var(--bg); color:var(--text);
+      font-family:'Press Start 2P', monospace;
+      image-rendering: pixelated;
+      letter-spacing:0.2px;
+    }
+    a{color:var(--accent2);text-decoration:none}
+    .wrap{max-width:1200px;margin:0 auto;padding:20px}
+
+    /* Panels / layout */
+    .panel{
+      background:var(--panel);
+      border:4px solid #000;
+      outline:2px solid var(--line);
+      padding:18px;
+      box-shadow:0 0 0 4px var(--panel2), 0 12px 0 0 #000;
+    }
+    .row{display:grid;gap:16px}
+    .cols-2{grid-template-columns:1fr 1fr}
     .cols-3{grid-template-columns:2fr 1fr 1fr}
-    .flagbox{display:flex;align-items:center;justify-content:center;
-      height:120px;background:#0e0e16;border:4px solid #000}
-    img.flag{max-width:120px}
-    .card-deck{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
-    .card8{background:var(--panel2);border:4px solid #000;outline:2px solid var(--line);
-      padding:10px;min-height:100px;cursor:pointer}
-    .dropzone{min-height:100px;display:flex;align-items:center;justify-content:center;
-      background:#0f0f16;border:4px dashed #000;outline:2px dashed var(--line);
-      color:var(--muted);padding:8px}
-    .bar{height:18px;border:4px solid #000;outline:2px solid var(--line);margin:6px 0;position:relative}
-    .bar>i{position:absolute;top:0;left:0;height:100%;width:0%;background:var(--accent);transition:width 1s}
-    #howOverlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.92);
-      display:none;align-items:center;justify-content:center;z-index:1000}
+    @media(max-width: 900px){.cols-2,.cols-3{grid-template-columns:1fr}}
+
+    h1,h2{margin:0 0 10px 0}
+    h1{font-size:18px;color:var(--yellow);text-shadow:0 2px 0 #000}
+    h2{font-size:12px;color:var(--muted)}
+    .muted{color:var(--muted);font-size:10px;line-height:1.6}
+    .tiny{font-size:9px}
+
+    /* Inputs & buttons */
+    input[type="text"], select{
+      width:100%;padding:10px;border:4px solid #000;outline:2px solid var(--line);
+      background:#0f0f14;color:var(--text);
+    }
+    .btn{
+      cursor:pointer;
+      background:var(--accent); color:#091109;
+      border:4px solid #000; outline:2px solid var(--line);
+      padding:12px 14px; text-align:center; display:inline-block;
+      box-shadow:0 6px 0 #000; font-size:12px; transition:transform .05s;
+    }
+    .btn:hover{filter:brightness(1.1)}
+    .btn:active{transform:translateY(2px); box-shadow:0 4px 0 #000}
+    .btn.alt{background:var(--accent2); color:#001018}
+    .btn.warn{background:var(--warn); color:#21000d}
+
+    /* Start screen */
+    .start{
+      display:flex; align-items:center; justify-content:center;
+      min-height:100dvh; text-align:center;
+      background:
+        radial-gradient(ellipse at center, #0f0f17 0%, #08080c 70%),
+        repeating-linear-gradient(90deg, #0c0c12 0 6px, #0b0b11 6px 12px);
+    }
+    .title{
+      font-size:24px; color:#fff; margin-bottom:16px;
+      text-shadow:0 3px 0 #000, 0 0 12px var(--accent2);
+    }
+    .subtitle{font-size:10px;color:var(--muted);margin-bottom:18px}
+
+    /* Card deck + cards */
+    .card-deck{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}
+    .card8{
+      background:var(--panel2);
+      border:4px solid #000; outline:2px solid var(--line);
+      padding:10px; min-height:110px; position:relative;
+      display:flex; flex-direction:column; gap:8px;
+      box-shadow:0 6px 0 #000;
+      user-select:none;
+    }
+    .card8 h3{font-size:11px;color:var(--yellow);margin:0}
+    .card8 p{font-size:9px;color:var(--muted);line-height:1.5;margin:0}
+    .chip{font-size:9px; background:#0e0e16; border:2px solid #000; outline:1px solid var(--line); padding:4px 6px; width:max-content}
+    .card8[draggable="true"]{cursor:grab}
+    .card8:active{cursor:grabbing}
+
+    /* Dropzones */
+    .dropzone{
+      min-height:140px; display:flex; align-items:center; justify-content:center;
+      background:#0f0f16; border:4px dashed #000; outline:2px dashed var(--line);
+      color:var(--muted); text-align:center; padding:8px;
+      transition: all .1s ease;
+    }
+    .dropzone.active{outline-color:var(--accent); color:var(--accent); transform:scale(1.01)}
+
+    /* Played cards area */
+    .played{display:flex; flex-wrap:wrap; gap:8px; margin-top:10px}
+    .mini{
+      font-size:9px; padding:6px 8px;
+      background:#0e0e16; color:var(--text);
+      border:3px solid #000; outline:2px solid var(--line);
+    }
+
+    /* Flags/maps */
+    .flagbox{display:flex;align-items:center;justify-content:center;height:120px;background:#0e0e16;border:4px solid #000;outline:2px solid var(--line)}
+    img.flag{max-width:120px;image-rendering: pixelated}
+
+    /* Pixel bars */
+    .bar{
+      height:18px; border:4px solid #000; outline:2px solid var(--line);
+      background: repeating-linear-gradient(90deg, #12121a 0 12px, #101018 12px 24px);
+      position:relative; overflow:hidden; margin-top:6px;
+    }
+    .bar>i{
+      position:absolute; top:0; left:0; height:100%;
+      width:0%;
+      background: repeating-linear-gradient(90deg, var(--accent) 0 12px, #0f0 12px 24px);
+      transition: width 900ms steps(12, end);
+    }
+    .bar.cyan>i{background: repeating-linear-gradient(90deg, var(--accent2) 0 12px, #0af 12px 24px)}
+    .bar.magenta>i{background: repeating-linear-gradient(90deg, var(--warn) 0 12px, #f06 12px 24px)}
+
+    /* Lists & animations */
+    .list{display:grid;gap:8px}
+    .rowline{display:flex;justify-content:space-between;align-items:center;gap:10px}
+    .pill{font-size:10px;background:#0e0e16;border:3px solid #000;outline:2px solid var(--line);padding:5px 8px}
+    .fade{opacity:0;animation:fadeUp 600ms ease forwards}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+    /* Overlay */
+    #howOverlay{
+      position:fixed;top:0;left:0;right:0;bottom:0;
+      background:rgba(0,0,0,0.92);color:var(--text);
+      display:none;align-items:center;justify-content:center;z-index:1000;
+    }
     #howOverlay.active{display:flex}
-    .howBox{background:var(--panel2);border:4px solid #000;outline:2px solid var(--line);
-      padding:20px;max-width:600px}
+    .howBox{
+      background:var(--panel2);border:4px solid #000;outline:2px solid var(--line);
+      padding:20px;max-width:720px;text-align:left;
+      box-shadow:0 0 0 4px var(--panel),0 12px 0 0 #000;
+    }
+    .howBox h1{font-size:16px;color:var(--yellow);margin-bottom:16px}
+    .howBox ol{padding-left:20px}
+    .howBox li{font-size:11px;margin:12px 0;line-height:1.7}
+    .howBox .muted{font-size:9px;color:var(--muted)}
+
+    /* Screen visibility */
+    .screen{display:none}
+    .screen.active{display:block}
   </style>
 </head>
 <body>
 
-<!-- How to Play overlay -->
-<div id="howOverlay">
-  <div class="howBox">
-    <h1>How to Play CtrlState</h1>
-    <ol>
-      <li>Pick Actors (countries + ethics).</li>
-      <li>Choose Scenario and drag event cards onto A or B.</li>
-      <li>Run Simulation to see results and story.</li>
-    </ol>
-    <button class="btn alt" onclick="closeHow()">OK, GOT IT</button>
-  </div>
-</div>
-
-<!-- Start -->
-<section id="screenStart" class="start screen active">
-  <div>
-    <div class="title">CTRLSTATE</div>
-    <div class="subtitle">Reflexive Influence Simulator</div>
-    <button class="btn" onclick="go('screenActors')">PRESS START</button>
-    <div style="margin-top:12px"><a href="#" onclick="showHow();return false;">How to Play</a></div>
-  </div>
-</section>
-
-<!-- Actors -->
-<section id="screenActors" class="wrap screen">
-  <div class="panel">
-    <h1>Select Actors</h1>
-    <div class="row cols-2">
-      <div class="panel"><h2>Actor A</h2>
-        <input id="a_name" value="Georgia" oninput="loadFlags()">
-        <select id="a_eth"><option>Type I</option><option selected>Type II</option></select>
-        <div class="flagbox"><img id="a_flag" class="flag"></div>
-      </div>
-      <div class="panel"><h2>Actor B</h2>
-        <input id="b_name" value="Russia" oninput="loadFlags()">
-        <select id="b_eth"><option selected>Type I</option><option>Type II</option></select>
-        <div class="flagbox"><img id="b_flag" class="flag"></div>
+  <!-- How to Play overlay -->
+  <div id="howOverlay">
+    <div class="howBox">
+      <h1>How to Play CtrlState</h1>
+      <ol>
+        <li><strong>Pick Actors:</strong> Choose two countries and set their ethics (Conscience vs Authority).</li>
+        <li><strong>Select Scenario & Events:</strong> Choose a scenario, then drag cards onto Actor A or B. Cards stack.</li>
+        <li><strong>Run Simulation:</strong> See pixel bars, layers (x₀, x₁, x₂, rf), actions and a simple story.</li>
+      </ol>
+      <div class="muted">Inspired by Lefebvre’s reflexive control theory — simplified for a game-like experience.</div>
+      <div style="margin-top:18px;text-align:center">
+        <button class="btn alt" onclick="closeHow()">OK, GOT IT</button>
       </div>
     </div>
-    <button class="btn alt" onclick="go('screenScenario')">NEXT ▸</button>
   </div>
-</section>
 
-<!-- Scenario -->
-<section id="screenScenario" class="wrap screen">
-  <div class="panel">
-    <h1>Choose Scenario</h1>
-    <div class="card-deck">
-      <div class="card8" onclick="preset('Elections')">🗳 Elections</div>
-      <div class="card8" onclick="preset('Border')">🚧 Border</div>
-      <div class="card8" onclick="preset('Sanctions')">💰 Sanctions</div>
-      <div class="card8" onclick="preset('Cyber')">💻 Cyber</div>
-      <div class="card8" onclick="preset('Custom')">🛠 Custom</div>
+  <!-- Start Screen -->
+  <section id="screenStart" class="start screen active">
+    <div class="wrap" style="text-align:center;max-width:700px">
+      <div class="title">CTRLSTATE</div>
+      <div class="subtitle">Reflexive Influence Simulator</div>
+      <button class="btn" onclick="go('screenActors'); beep()">PRESS START</button>
+      <div class="muted" style="margin-top:14px">Tip: pick countries, ethics, then play event cards to change the outcome.</div>
+      <div style="margin-top:12px"><a href="#" onclick="showHow();return false;">How to Play</a></div>
     </div>
-    <button class="btn alt" onclick="go('screenEvents')">NEXT ▸</button>
-  </div>
-</section>
+  </section>
 
-<!-- Events -->
-<section id="screenEvents" class="wrap screen">
-  <div class="panel">
-    <h1>Event Cards</h1>
-    <div class="row cols-2">
-      <div class="panel"><h2>Actor A</h2><div id="dropA" class="dropzone">DROP HERE</div><div class="flagbox"><img id="a_flag2" class="flag"></div></div>
-      <div class="panel"><h2>Actor B</h2><div id="dropB" class="dropzone">DROP HERE</div><div class="flagbox"><img id="b_flag2" class="flag"></div></div>
-    </div>
-    <div class="card-deck" id="deck"></div>
-    <button class="btn alt" onclick="runSim()">RUN SIMULATION ▸</button>
-  </div>
-</section>
-
-<!-- Results -->
-<section id="screenResults" class="wrap screen">
-  <div class="panel">
-    <h1>Results</h1>
-    <div class="row cols-3">
-      <div class="panel">
-        <h2>State Shifts</h2>
-        <div>Perception <span id="p_pct">0%</span></div><div class="bar"><i id="p_bar"></i></div>
-        <div>Policy <span id="q_pct">0%</span></div><div class="bar"><i id="q_bar"></i></div>
-        <div>Stability <span id="s_pct">0%</span></div><div class="bar"><i id="s_bar"></i></div>
+  <!-- Actors Screen -->
+  <section id="screenActors" class="wrap screen">
+    <div class="panel">
+      <h1>Select Actors</h1>
+      <div class="row cols-2" style="margin-top:8px">
+        <div class="panel">
+          <h2>Actor A (Influencer)</h2>
+          <input id="a_name" type="text" value="Georgia" oninput="loadFlags()"/>
+          <div style="height:8px"></div>
+          <label class="muted tiny">Ethics</label>
+          <select id="a_eth"><option>Type I (Conscience)</option><option selected>Type II (Authority)</option></select>
+          <div style="height:8px"></div>
+          <div class="flagbox"><img id="a_flag" class="flag" alt="A flag"></div>
+        </div>
+        <div class="panel">
+          <h2>Actor B (Target)</h2>
+          <input id="b_name" type="text" value="Russia" oninput="loadFlags()"/>
+          <div style="height:8px"></div>
+          <label class="muted tiny">Ethics</label>
+          <select id="b_eth"><option selected>Type I (Conscience)</option><option>Type II (Authority)</option></select>
+          <div style="height:8px"></div>
+          <div class="flagbox"><img id="b_flag" class="flag" alt="B flag"></div>
+        </div>
       </div>
-      <div class="panel"><h2>Likely Move</h2><div id="actions"></div></div>
-      <div class="panel"><h2>Layers</h2><div id="layers"></div></div>
+
+      <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn alt" onclick="go('screenScenario'); beep()">NEXT ▸</button>
+        <span class="muted tiny">Ethics tip: Type I follows inner conscience; Type II follows authority/group.</span>
+      </div>
     </div>
-    <pre id="story"></pre>
-    <button class="btn alt" onclick="go('screenEvents')">PLAY AGAIN</button>
-  </div>
-</section>
+  </section>
 
-<script>
-const byId=id=>document.getElementById(id);const clamp01=x=>Math.max(0,Math.min(1,x));
-function go(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));byId(id).classList.add('active');if(id==='screenEvents')syncFlags();}
-function showHow(){byId('howOverlay').classList.add('active');}function closeHow(){byId('howOverlay').classList.remove('active');}
+  <!-- Scenario Screen -->
+  <section id="screenScenario" class="wrap screen">
+    <div class="panel">
+      <h1>Choose a Scenario</h1>
+      <div class="muted tiny" style="margin-bottom:10px">Scenarios set starting conditions. You can still play event cards next.</div>
+      <div class="card-deck" style="margin-top:8px">
+        <div class="card8" onclick="preset('Elections')">
+          <h3>🗳 Elections</h3><p>Campaigns and narratives shape public perception.</p><span class="chip">IO + Media</span>
+        </div>
+        <div class="card8" onclick="preset('Border')">
+          <h3>🚧 Border</h3><p>Force posture and deterrence calculations.</p><span class="chip">Capabilities + Risk</span>
+        </div>
+        <div class="card8" onclick="preset('Sanctions')">
+          <h3>💰 Sanctions</h3><p>Economic pressure rebalances decisions.</p><span class="chip">Alliances + Resilience</span>
+        </div>
+        <div class="card8" onclick="preset('Cyber')">
+          <h3>💻 Cyber</h3><p>Ops degrade trust and capacity.</p><span class="chip">IO + Capabilities</span>
+        </div>
+        <div class="card8" onclick="preset('Custom')">
+          <h3>🛠 Custom</h3><p>Start neutral and play your own cards.</p><span class="chip">DIY</span>
+        </div>
+      </div>
 
-let A={name:"Georgia",ethicalType:"Type II",riskTolerance:.55,domesticFragility:.35,capabilities:.60,infoOpsIntensity:.70,mediaPenetration:.60,alliancePressure:.20,resilience:.50};
-let B={name:"Russia",ethicalType:"Type I",riskTolerance:.40,domesticFragility:.45,capabilities:.50,infoOpsIntensity:.40,mediaPenetration:.55,alliancePressure:.60,resilience:.60};
+      <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn alt" onclick="go('screenEvents'); beep()">NEXT ▸</button>
+        <button class="btn" onclick="go('screenActors'); beep()">◂ BACK</button>
+      </div>
+    </div>
+  </section>
 
-const CARDS=[{id:'prop',title:'PROPAGANDA',d:{infoOpsIntensity:+0.15}},
-{id:'media',title:'MEDIA BLITZ',d:{mediaPenetration:+0.15}},
-{id:'ally',title:'ALLIANCE PUSH',d:{alliancePressure:+0.20}},
-{id:'protest',title:'MASS PROTESTS',d:{domesticFragility:+0.18}},
-{id:'cyber',title:'CYBER RAID',d:{capabilities:+0.10,infoOpsIntensity:+0.08}},
-{id:'resil',title:'RESILIENCE DRIVE',d:{resilience:+0.20}}];
+  <!-- Events Screen -->
+  <section id="screenEvents" class="wrap screen">
+    <div class="panel">
+      <h1>Play Event Cards</h1>
+      <div class="muted tiny" style="margin-bottom:10px">Drag a card onto Actor A or Actor B. Cards are <strong>stackable</strong> and stay visible.</div>
 
-function renderDeck(){byId('deck').innerHTML=CARDS.map(c=>`<div class="card8" draggable="true" data-id="${c.id}">${c.title}</div>`).join('');
-document.querySelectorAll('.card8').forEach(el=>{
-el.addEventListener('dragstart',e=>{e.dataTransfer.setData('id',el.dataset.id);});
-});}
-function initDrops(){['dropA','dropB'].forEach(id=>{const el=byId(id);el.addEventListener('dragover',e=>e.preventDefault());
-el.addEventListener('drop',e=>{e.preventDefault();applyCard(id==='dropA'?'A':'B',e.dataTransfer.getData('id'));});});}
-function applyCard(t,idc){const c=CARDS.find(x=>x.id===idc);if(!c)return;const o=(t==='A')?A:B;for(let[k,d]of Object.entries(c.d)){o[k]=clamp01((o[k]||0)+d);}}
+      <div class="row cols-2" style="margin-bottom:12px">
+        <div class="panel">
+          <h2>Actor A Dropzone</h2>
+          <div id="dropA" class="dropzone">DROP CARDS ON A</div>
+          <div class="played" id="playedA"></div>
+          <div class="flagbox" style="margin-top:10px"><img id="a_flag2" class="flag"></div>
+        </div>
+        <div class="panel">
+          <h2>Actor B Dropzone</h2>
+          <div id="dropB" class="dropzone">DROP CARDS ON B</div>
+          <div class="played" id="playedB"></div>
+          <div class="flagbox" style="margin-top:10px"><img id="b_flag2" class="flag"></div>
+        </div>
+      </div>
 
-function compute(A,B){
-  const x0=clamp01(0.6*(1-A.domesticFragility)+0.4*A.riskTolerance);
-  const x1=clamp01(0.5*B.capabilities+0.5*(1-B.alliancePressure));
-  const x2=clamp01(1/(1+Math.exp(-3*(B.infoOpsIntensity*A.mediaPenetration-A.resilience))));
-  const rf=clamp01(0.4*x0+0.3*x1+0.3*x2);
-  const capRatio=clamp01((A.capabilities+1e-6)/(A.capabilities+B.capabilities+1e-6));
-  const E_perc=clamp01(1/(1+Math.exp(-(2*(A.infoOpsIntensity*B.mediaPenetration-B.resilience)+1.2*rf))));
-  const E_pol=clamp01(1/(1+Math.exp(-(2.2*(capRatio-B.alliancePressure)+0.8*rf))));
-  const E_stab=clamp01(1/(1+Math.exp(-(2*(B.domesticFragility*A.infoOpsIntensity-B.resilience)+1.0*rf))));
-  const pCoop=1/(1+Math.exp(-(3*(0.6*(1-A.riskTolerance)+0.4*(1-capRatio))-1.2+0.6*(1-B.alliancePressure))));
-  const pCoer=1/(1+Math.exp(-(3*(0.5*capRatio+0.5*A.riskTolerance)+0.5*rf-1.0)));
-  const pDecv=1/(1+Math.exp(-(3*(0.6*A.infoOpsIntensity+0.4*rf)-0.8)));
-  const pDees=1/(1+Math.exp(-(3*(0.6*B.alliancePressure+0.4*(1-A.riskTolerance))-0.9)));
-  const sum=pCoop+pCoer+pDecv+pDees+1e-9;
-  return{layers:{x0,x1,x2,rf},impact:{perception:E_perc,policy:E_pol,stability:E_stab},
-    actions:[{key:"Cooperate",p:pCoop/sum},{key:"Coerce",p:pCoer/sum},{key:"Deceive",p:pDecv/sum},{key:"De-escalate",p:pDees/sum}]};
-}
+      <h2>Deck</h2>
+      <div class="card-deck" id="deck"></div>
 
-function runSim(){
-  A.name=byId('a_name').value;B.name=byId('b_name').value;
-  A.ethicalType=byId('a_eth').value;B.ethicalType=byId('b_eth').value;
-  const r=compute(A,B);
-  const P=Math.round(r.impact.perception*100),Q=Math.round(r.impact.policy*100),S=Math.round(r.impact.stability*100);
-  byId('p_pct').textContent=P+"%";byId('q_pct').textContent=Q+"%";byId('s_pct').textContent=S+"%";
-  byId('p_bar').style.width=P+"%";byId('q_bar').style.width=Q+"%";byId('s_bar').style.width=S+"%";
-  byId('layers').innerHTML=Object.entries(r.layers).map(([k,v])=>`<div>${k}: ${Math.round(v*100)}%</div>`).join('');
-  byId('actions').innerHTML=r.actions.map(a=>`<div>${a.key}: ${(a.p*100).toFixed(1)}%</div>`).join('');
-  byId('story').textContent=`${A.name} vs ${B.name}\nDominant channel: ${["Perception","Policy","Stability"].sort((x,y)=>r.impact[x.toLowerCase()]-r.impact[y.toLowerCase()]).pop()}`;
-  go('screenResults');
-}
+      <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn warn" onclick="resetPlayed(); beep()">CLEAR PLAYED</button>
+        <button class="btn alt" onclick="runSim(); beep()">RUN SIMULATION ▸</button>
+        <button class="btn" onclick="go('screenScenario'); beep()">◂ BACK</button>
+      </div>
+    </div>
+  </section>
 
-function preset(w){/* optional: adjust baselines if you like */}
-function loadFlags(){byId('a_flag').src=`https://flagcdn.com/${byId('a_name').value.trim().toLowerCase().slice(0,2)}.svg`;
-byId('b_flag').src=`https://flagcdn.com/${byId('b_name').value.trim().toLowerCase().slice(0,2)}.svg`;
-syncFlags();}
-function syncFlags(){byId('a_flag2').src=byId('a_flag').src;byId('b_flag2').src=byId('b_flag').src;}
+  <!-- Results Screen -->
+  <section id="screenResults" class="wrap screen">
+    <div class="panel">
+      <h1>Simulation Results</h1>
 
-renderDeck();initDrops();loadFlags();
-</script>
+      <div class="row cols-3" style="margin-top:10px">
+        <div class="panel">
+          <h2>State Shifts (A → B)</h2>
+          <div class="row">
+            <div class="rowline"><span>Perception</span><span class="pill" id="p_pct">0%</span></div>
+            <div class="bar"><i id="p_bar"></i></div>
+            <div class="rowline" style="margin-top:8px"><span>Policy</span><span class="pill" id="q_pct">0%</span></div>
+            <div class="bar cyan"><i id="q_bar"></i></div>
+            <div class="rowline" style="margin-top:8px"><span>Stability</span><span class="pill" id="s_pct">0%</span></div>
+            <div class="bar magenta"><i id="s_bar"></i></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2>Likely Move</h2>
+          <div class="list" id="actions"></div>
+        </div>
+
+        <div class="panel">
+          <h2>Ctrl Layers</h2>
+          <div class="list" id="layers"></div>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top:12px">
+        <h2>Story (Simple Explanation)</h2>
+        <div id="story" class="muted" style="font-size:10px;line-height:1.7"></div>
+        <div class="muted tiny" style="margin-top:8px">Toggle “Advanced” in future if you want raw x-values and probabilities.</div>
+      </div>
+
+      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn alt" onclick="go('screenEvents'); beep()">PLAY AGAIN ▸</button>
+        <button class="btn" onclick="exportJSON(); beep()">EXPORT JSON</button>
+        <button class="btn" onclick="go('screenScenario'); beep()">SCENARIOS</button>
+        <button class="btn" onclick="go('screenActors'); beep()">ACTORS</button>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    /* ===== Helpers & audio ===== */
+    const byId = id => document.getElementById(id);
+    const clamp01 = x => Math.max(0, Math.min(1, +x));
+    const sig = z => 1/(1+Math.exp(-z));
+    function beep(freq=660, dur=0.06, type='square'){
+      try{
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = type; o.frequency.value = freq; o.connect(g); g.connect(ctx.destination);
+        o.start();
+        g.gain.setValueAtTime(0.04, ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime+dur);
+        o.stop(ctx.currentTime+dur);
+      }catch(e){}
+    }
+    function go(id){
+      document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+      byId(id).classList.add('active');
+      if(id==='screenEvents'){ syncFlags2(); }
+    }
+    function showHow(){ byId('howOverlay').classList.add('active'); beep(700,0.07); }
+    function closeHow(){ byId('howOverlay').classList.remove('active'); beep(500,0.07); }
+
+    /* ===== Actors state ===== */
+    let A = { name:"Georgia", ethicalType:"Type II (Authority)", riskTolerance:.55, domesticFragility:.35, capabilities:.60, infoOpsIntensity:.70, mediaPenetration:.60, alliancePressure:.20, resilience:.50 };
+    let B = { name:"Russia",  ethicalType:"Type I (Conscience)", riskTolerance:.40, domesticFragility:.45, capabilities:.50, infoOpsIntensity:.40, mediaPenetration:.55, alliancePressure:.60, resilience:.60 };
+
+    function ethicsHuman(s){ return s.includes("Type I") ? "follows conscience" : "follows authority"; }
+
+    /* ===== Scenario presets (restore polished baselines) ===== */
+    function preset(which){
+      const aEth = byId("a_eth").value, bEth = byId("b_eth").value;
+      if(which==="Elections"){
+        A = { ...A, ethicalType:aEth, riskTolerance:.55, domesticFragility:.35, infoOpsIntensity:.70, mediaPenetration:.60, capabilities:.60, alliancePressure:.20, resilience:.50 };
+        B = { ...B, ethicalType:bEth, riskTolerance:.40, domesticFragility:.45, infoOpsIntensity:.40, mediaPenetration:.55, capabilities:.50, alliancePressure:.60, resilience:.60 };
+      } else if(which==="Border"){
+        A = { ...A, ethicalType:aEth, riskTolerance:.70, domesticFragility:.30, infoOpsIntensity:.50, mediaPenetration:.50, capabilities:.70, alliancePressure:.30, resilience:.55 };
+        B = { ...B, ethicalType:bEth, riskTolerance:.50, domesticFragility:.40, infoOpsIntensity:.35, mediaPenetration:.50, capabilities:.60, alliancePressure:.65, resilience:.65 };
+      } else if(which==="Sanctions"){
+        A = { ...A, ethicalType:aEth, riskTolerance:.45, domesticFragility:.50, infoOpsIntensity:.50, mediaPenetration:.60, capabilities:.55, alliancePressure:.50, resilience:.60 };
+        B = { ...B, ethicalType:bEth, riskTolerance:.55, domesticFragility:.35, infoOpsIntensity:.60, mediaPenetration:.55, capabilities:.60, alliancePressure:.25, resilience:.55 };
+      } else if(which==="Cyber"){
+        A = { ...A, ethicalType:aEth, riskTolerance:.60, domesticFragility:.40, infoOpsIntensity:.80, mediaPenetration:.65, capabilities:.55, alliancePressure:.35, resilience:.55 };
+        B = { ...B, ethicalType:bEth, riskTolerance:.45, domesticFragility:.45, infoOpsIntensity:.45, mediaPenetration:.60, capabilities:.55, alliancePressure:.60, resilience:.65 };
+      } else {
+        A = { ...A, ethicalType:aEth }; B = { ...B, ethicalType:bEth };
+      }
+      beep(800,0.06);
+    }
+
+    /* ===== Event cards (stackable) ===== */
+    const CARDS = [
+      { id:'prop',    title:'PROPAGANDA',        desc:'Boost info ops intensity.', deltas:{infoOpsIntensity:+0.15}, tag:'IO' },
+      { id:'media',   title:'MEDIA BLITZ',       desc:'Increase media penetration in target.', deltas:{mediaPenetration:+0.15}, tag:'IO' },
+      { id:'ally',    title:'ALLIANCE PUSH',     desc:'External pressure against target.', deltas:{alliancePressure:+0.20}, tag:'ALLIANCE' },
+      { id:'protest', title:'MASS PROTESTS',     desc:'Domestic fragility rises.', deltas:{domesticFragility:+0.18}, tag:'DOMESTIC' },
+      { id:'cyber',   title:'CYBER RAID',        desc:'Capacities & IO rise slightly.', deltas:{capabilities:+0.10, infoOpsIntensity:+0.08}, tag:'CYBER' },
+      { id:'resil',   title:'RESILIENCE DRIVE',  desc:'Civic resilience strengthens.', deltas:{resilience:+0.20}, tag:'CIVIC' },
+      { id:'deescal', title:'DE-ESCALATE',       desc:'Reduce risk & pressure.', deltas:{riskTolerance:-0.12, alliancePressure:-0.12}, tag:'DE-ESC' }
+    ];
+
+    function renderDeck(){
+      const deck = byId('deck');
+      deck.innerHTML = CARDS.map(c=>`
+        <div class="card8" draggable="true" data-card="${c.id}">
+          <h3>${c.title}</h3>
+          <p>${c.desc}</p>
+          <span class="chip">${c.tag}</span>
+        </div>
+      `).join('');
+      deck.querySelectorAll('.card8').forEach(el=>{
+        el.addEventListener('dragstart', e=>{
+          e.dataTransfer.setData('text/plain', el.dataset.card);
+          document.querySelectorAll('.dropzone').forEach(z=>z.classList.add('active'));
+          beep(760,0.05,'sawtooth');
+        });
+        el.addEventListener('dragend', ()=>{
+          document.querySelectorAll('.dropzone').forEach(z=>z.classList.remove('active'));
+        });
+      });
+    }
+
+    function applyCard(target, cardId){
+      const c = CARDS.find(x=>x.id===cardId);
+      if(!c) return;
+      const obj = (target==='A') ? A : B;
+      // apply deltas (stackable)
+      Object.entries(c.deltas).forEach(([k,delta])=>{
+        obj[k] = clamp01((obj[k]??0) + delta);
+      });
+      // show mini chip in played area
+      const chip = document.createElement('div');
+      chip.className = 'mini';
+      chip.textContent = c.title;
+      (target==='A' ? byId('playedA') : byId('playedB')).appendChild(chip);
+      beep(520,0.06,'square');
+    }
+
+    function resetPlayed(){
+      byId('playedA').innerHTML = '';
+      byId('playedB').innerHTML = '';
+      beep(300,0.08,'triangle');
+      // NOTE: This clears the visible chips but **does not** reset A/B stats;
+      // use scenario presets to reset stats if desired.
+    }
+
+    function initDrops(){
+      ['dropA','dropB'].forEach(id=>{
+        const el = byId(id);
+        el.addEventListener('dragover', e=>{ e.preventDefault(); });
+        el.addEventListener('drop', e=>{
+          e.preventDefault();
+          const cardId = e.dataTransfer.getData('text/plain');
+          applyCard(id==='dropA'?'A':'B', cardId);
+          document.querySelectorAll('.dropzone').forEach(z=>z.classList.remove('active'));
+        });
+        el.addEventListener('dragenter', ()=> el.classList.add('active'));
+        el.addEventListener('dragleave', ()=> el.classList.remove('active'));
+      });
+    }
+
+    /* ===== Compute (Lefebvre-inspired engine) ===== */
+    function compute(A,B){
+      // Reflexive layers
+      const x0 = clamp01(0.6*(1 - A.domesticFragility) + 0.4*A.riskTolerance);
+      const x1 = clamp01(0.5*B.capabilities + 0.5*(1 - B.alliancePressure));
+      const x2 = clamp01(sig(3*(B.infoOpsIntensity*A.mediaPenetration - A.resilience)));
+      const rf = clamp01(0.4*x0 + 0.3*x1 + 0.3*x2);
+
+      // Channels
+      const capRatio = clamp01((A.capabilities+1e-6)/(A.capabilities+B.capabilities+1e-6));
+      const E_perc = clamp01(sig(2.0*(A.infoOpsIntensity*B.mediaPenetration - B.resilience) + 1.2*rf));
+      const E_pol  = clamp01(sig(2.2*(capRatio - B.alliancePressure) + 0.8*rf));
+      const E_stab = clamp01(sig(2.0*(B.domesticFragility*A.infoOpsIntensity - B.resilience) + 1.0*rf));
+
+      // Action likelihoods
+      const pCoop = sig(3*(0.6*(1-A.riskTolerance)+0.4*(1-capRatio)) - 1.2 + 0.6*(1-B.alliancePressure));
+      const pCoer = sig(3*(0.5*capRatio + 0.5*A.riskTolerance) + 0.5*rf - 1.0);
+      const pDecv = sig(3*(0.6*A.infoOpsIntensity + 0.4*rf) - 0.8);
+      const pDees = sig(3*(0.6*B.alliancePressure + 0.4*(1-A.riskTolerance)) - 0.9);
+      const sum = pCoop+pCoer+pDecv+pDees + 1e-9;
+
+      return {
+        layers:{x0,x1,x2,rf},
+        impact:{perception:E_perc, policy:E_pol, stability:E_stab},
+        actions:[
+          { key:"Cooperate / Engage", p:pCoop/sum },
+          { key:"Coerce / Compel",   p:pCoer/sum },
+          { key:"Deceive / Influence (IO)", p:pDecv/sum },
+          { key:"De-escalate / Pause", p:pDees/sum }
+        ]
+      };
+    }
+
+    /* ===== Results rendering ===== */
+    function runSim(){
+      // sync names & ethics
+      A.name = byId('a_name').value || 'Actor A';
+      B.name = byId('b_name').value || 'Actor B';
+      A.ethicalType = byId('a_eth').value;
+      B.ethicalType = byId('b_eth').value;
+
+      const res = compute(A,B);
+
+      // Bars
+      const P = Math.round(res.impact.perception*100);
+      const Q = Math.round(res.impact.policy*100);
+      const S = Math.round(res.impact.stability*100);
+      // reset then animate to give the blocky fill effect
+      byId('p_bar').style.width='0%'; byId('q_bar').style.width='0%'; byId('s_bar').style.width='0%';
+      byId('p_pct').textContent = P+'%';
+      byId('q_pct').textContent = Q+'%';
+      byId('s_pct').textContent = S+'%';
+      setTimeout(()=>{ byId('p_bar').style.width=P+'%'; byId('q_bar').style.width=Q+'%'; byId('s_bar').style.width=S+'%'; }, 40);
+
+      // Layers
+      const L = res.layers;
+      byId('layers').innerHTML = [
+        {label:'x₀ (self-image)', v:L.x0},
+        {label:'x₁ (image of B)', v:L.x1},
+        {label:'x₂ (A thinks B thinks of A)', v:L.x2},
+        {label:'rf (reflexive factor)', v:L.rf}
+      ].map((l,i)=>`<div class="rowline fade" style="animation-delay:${i*0.15}s"><span>${l.label}</span><span class="pill">${Math.round(l.v*100)}%</span></div>`).join('');
+
+      // Actions
+      const actions = [...res.actions].sort((a,b)=>b.p-a.p);
+      byId('actions').innerHTML = actions.map((a,i)=>`<div class="rowline fade" style="animation-delay:${i*0.15}s"><span>${a.key}</span><span class="pill">${(a.p*100).toFixed(1)}%</span></div>`).join('');
+
+      // Story (plain language)
+      const domImpact = [["Perception",res.impact.perception],["Policy",res.impact.policy],["Stability",res.impact.stability]].sort((a,b)=>b[1]-a[1])[0][0];
+      const lead = actions[0];
+      const story = [
+        `• ${A.name} ${ethicsHuman(A.ethicalType)}; ${B.name} ${ethicsHuman(B.ethicalType)}.`,
+        `• ${A.name} feels ${L.x0>0.5?'stronger':'weaker'} inside (x₀=${Math.round(L.x0*100)}%).`,
+        `• ${A.name} sees ${B.name} as ${L.x1>0.5?'powerful':'limited'} (x₁=${Math.round(L.x1*100)}%).`,
+        `• ${A.name} thinks ${B.name} views A as ${L.x2>0.5?'vulnerable':'resilient'} (x₂=${Math.round(L.x2*100)}%).`,
+        `• Dominant channel: ${domImpact}. Likely move: ${lead.key} (${(lead.p*100).toFixed(0)}%).`
+      ].join('\n');
+      byId('story').textContent = story;
+
+      go('screenResults');
+      beep(900,0.09,'square');
+    }
+
+    function exportJSON(){
+      const payload = { A, B, result: compute(A,B) };
+      const blob = new Blob([JSON.stringify(payload,null,2)], {type:"application/json"});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'ctrlstate_result.json'; a.click(); URL.revokeObjectURL(url);
+      beep(500,0.06);
+    }
+
+    /* ===== Flags / maps (case-insensitive + aliases) ===== */
+    function loadFlags(){
+      const a = byId('a_name').value || '';
+      const b = byId('b_name').value || '';
+      loadMapImage(a,'a_flag'); loadMapImage(b,'b_flag');
+      loadMapImage(a,'a_flag2'); loadMapImage(b,'b_flag2');
+    }
+    function syncFlags2(){
+      loadMapImage(byId('a_name').value,'a_flag2');
+      loadMapImage(byId('b_name').value,'b_flag2');
+    }
+    function loadMapImage(name, targetId){
+      if(!name) return;
+      const code = COUNTRY_TO_ISO[name.trim().toLowerCase()];
+      byId(targetId).src = code ? `https://flagcdn.com/${code}.svg` : '';
+    }
+
+    const COUNTRY_TO_ISO = {
+      "afghanistan":"af","albania":"al","algeria":"dz","andorra":"ad","angola":"ao","antigua and barbuda":"ag","argentina":"ar","armenia":"am","australia":"au","austria":"at","azerbaijan":"az",
+      "bahamas":"bs","bahrain":"bh","bangladesh":"bd","barbados":"bb","belarus":"by","belgium":"be","belize":"bz","benin":"bj","bhutan":"bt","bolivia":"bo","bosnia and herzegovina":"ba",
+      "botswana":"bw","brazil":"br","brunei":"bn","bulgaria":"bg","burkina faso":"bf","burundi":"bi","cambodia":"kh","cameroon":"cm","canada":"ca","cape verde":"cv","central african republic":"cf",
+      "chad":"td","chile":"cl","china":"cn","colombia":"co","comoros":"km","congo":"cg","congo (democratic republic)":"cd","costa rica":"cr","cote d'ivoire":"ci","ivory coast":"ci","croatia":"hr",
+      "cuba":"cu","cyprus":"cy","czechia":"cz","czech republic":"cz","denmark":"dk","djibouti":"dj","dominica":"dm","dominican republic":"do","ecuador":"ec","egypt":"eg","el salvador":"sv",
+      "equatorial guinea":"gq","eritrea":"er","estonia":"ee","eswatini":"sz","swaziland":"sz","ethiopia":"et","fiji":"fj","finland":"fi","france":"fr","gabon":"ga","gambia":"gm","georgia":"ge",
+      "germany":"de","ghana":"gh","greece":"gr","grenada":"gd","guatemala":"gt","guinea":"gn","guinea-bissau":"gw","guyana":"gy","haiti":"ht","honduras":"hn","hungary":"hu","iceland":"is",
+      "india":"in","indonesia":"id","iran":"ir","iraq":"iq","ireland":"ie","israel":"il","italy":"it","jamaica":"jm","japan":"jp","jordan":"jo","kazakhstan":"kz","kenya":"ke","kiribati":"ki",
+      "korea (north)":"kp","north korea":"kp","korea (south)":"kr","south korea":"kr","kosovo":"xk","kuwait":"kw","kyrgyzstan":"kg","laos":"la","latvia":"lv","lebanon":"lb","lesotho":"ls",
+      "liberia":"lr","libya":"ly","liechtenstein":"li","lithuania":"lt","luxembourg":"lu","madagascar":"mg","malawi":"mw","malaysia":"my","maldives":"mv","mali":"ml","malta":"mt",
+      "marshall islands":"mh","mauritania":"mr","mauritius":"mu","mexico":"mx","micronesia":"fm","moldova":"md","monaco":"mc","mongolia":"mn","montenegro":"me","morocco":"ma","mozambique":"mz",
+      "myanmar":"mm","burma":"mm","namibia":"na","nauru":"nr","nepal":"np","netherlands":"nl","new zealand":"nz","nicaragua":"ni","niger":"ne","nigeria":"ng","north macedonia":"mk",
+      "norway":"no","oman":"om","pakistan":"pk","palau":"pw","panama":"pa","papua new guinea":"pg","paraguay":"py","peru":"pe","philippines":"ph","poland":"pl","portugal":"pt","qatar":"qa",
+      "romania":"ro","russia":"ru","russian federation":"ru","rwanda":"rw","saint kitts and nevis":"kn","saint lucia":"lc","saint vincent and the grenadines":"vc","samoa":"ws",
+      "san marino":"sm","sao tome and principe":"st","saudi arabia":"sa","senegal":"sn","serbia":"rs","seychelles":"sc","sierra leone":"sl","singapore":"sg","slovakia":"sk","slovenia":"si",
+      "solomon islands":"sb","somalia":"so","south africa":"za","spain":"es","sri lanka":"lk","sudan":"sd","south sudan":"ss","suriname":"sr","sweden":"se","switzerland":"ch","syria":"sy",
+      "taiwan":"tw","tajikistan":"tj","tanzania":"tz","thailand":"th","timor-leste":"tl","east timor":"tl","togo":"tg","tonga":"to","trinidad and tobago":"tt","tunisia":"tn","turkey":"tr",
+      "turkmenistan":"tm","tuvalu":"tv","uganda":"ug","ukraine":"ua","united arab emirates":"ae","united kingdom":"gb","uk":"gb","britain":"gb","england":"gb",
+      "united states":"us","united states of america":"us","usa":"us","us":"us","uruguay":"uy","uzbekistan":"uz","vanuatu":"vu","venezuela":"ve","vietnam":"vn","yemen":"ye","zambia":"zm","zimbabwe":"zw"
+    };
+
+    /* ===== Init ===== */
+    function renderEverything(){
+      renderDeck();
+      initDrops();
+      // flags on initial view
+      byId('a_name').value = A.name;
+      byId('b_name').value = B.name;
+      loadMapImage(A.name,'a_flag'); loadMapImage(B.name,'b_flag');
+      loadMapImage(A.name,'a_flag2'); loadMapImage(B.name,'b_flag2');
+    }
+    window.addEventListener('DOMContentLoaded', renderEverything);
+  </script>
 </body>
 </html>
